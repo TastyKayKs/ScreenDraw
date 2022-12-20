@@ -73,18 +73,30 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Font.Parent = $BigPanel
                 }
                 'Icon'{
-                    $Path = [System.Windows.Forms.TextBox]::new()
-                    $Path.Text = $Label
-                    $Path.Left = $OffSetX
-                    $Path.Top = $OffsetY
-                    $Path.Parent = $BigPanel
+                    $File = [System.Windows.Forms.Button]::new()
+                    $File.Text = $Label
+                    $File.Left = $OffSetX
+                    $File.Top+=$OffSetY
+                    $File.Add_Click({
+                        $FileDialog = [System.Windows.Forms.OpenFileDialog]::new()
+                        $FileDialog.ShowDialog()
+                        $This.Text = $FileDialog.FileName
+                        $This.Parent.Select()
+                    })
+                    $File.Parent = $BigPanel
                 }
                 'Image'{
-                    $Path = [System.Windows.Forms.TextBox]::new()
-                    $Path.Text = $Label
-                    $Path.Left = $OffSetX
-                    $Path.Top = $OffsetY
-                    $Path.Parent = $BigPanel
+                    $File = [System.Windows.Forms.Button]::new()
+                    $File.Text = $Label
+                    $File.Left = $OffSetX
+                    $File.Top+=$OffSetY
+                    $File.Add_Click({
+                        $FileDialog = [System.Windows.Forms.OpenFileDialog]::new()
+                        $FileDialog.ShowDialog()
+                        $This.Text = $FileDialog.FileName
+                        $This.Parent.Select()
+                    })
+                    $File.Parent = $BigPanel
                 }
                 'String'{
                     $String = [System.Windows.Forms.TextBox]::new()
@@ -109,6 +121,7 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Number1.Width = 75
                     $Number1.Left = $Lab.Location.X+$Lab.Width+15
                     $Number1.Top+=$OffSetY
+                    $Number1.Text='Array'
                     $Number1.Parent = $BigPanel
 
                     $Number2 = [System.Windows.Forms.NumericUpDown]::new()
@@ -117,6 +130,7 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Number2.Width = 75
                     $Number2.Left = $Number1.Location.X+$Number1.Width+15
                     $Number2.Top+=$OffSetY
+                    $Number2.Text='Array'
                     $Number2.Parent = $BigPanel
                 }
                 'Point[]'{
@@ -135,10 +149,10 @@ $PassiveList.Add_SelectedIndexChanged({
                         $TempOffsetY+=30
 
                         $Lab = [System.Windows.Forms.Label]::new()
-                        $Lab.Text = $Label
-                        $Lab.Width = ($Label.Length*5)+10
-                        $Lab.Left = $OffSetX
-                        $Lab.Top+=$TempOffsetY
+                        $Lab.Text = "points"
+                        $Lab.Width = ($Lab.Text.Length*5)+10
+                        $Lab.Left = $This.Location.X
+                        $Lab.Top = $TempOffsetY
                         $Lab.Parent = $BigPanel
 
                         #$OffSetX+=$Lab.Width+20
@@ -147,16 +161,16 @@ $PassiveList.Add_SelectedIndexChanged({
                         $Number1.Maximum = 99999
                         $Number1.Minimum = -99999
                         $Number1.Width = 75
-                        $Number1.Left+=$Lab.Location.X+$Lab.Width+15
-                        $Number1.Top+=$TempOffsetY
+                        $Number1.Left = $Lab.Location.X+$Lab.Width+15
+                        $Number1.Top = $TempOffsetY
                         $Number1.Parent = $BigPanel
 
                         $Number2 = [System.Windows.Forms.NumericUpDown]::new()
                         $Number2.Maximum = 99999
                         $Number2.Minimum = -99999
                         $Number2.Width = 75
-                        $Number2.Left+=$Number1.Location.X+$Number1.Width+15
-                        $Number2.Top+=$TempOffsetY
+                        $Number2.Left = $Number1.Location.X+$Number1.Width+15
+                        $Number2.Top = $TempOffsetY
                         $Number2.Parent = $BigPanel
                     })
                     $Add.Parent = $BigPanel
@@ -165,7 +179,7 @@ $PassiveList.Add_SelectedIndexChanged({
 
                     $Lab = [System.Windows.Forms.Label]::new()
                     $Lab.Text = $Label
-                    $Lab.Width = ($Label.Length*5)+10
+                    $Lab.Width = ($Lab.Text.Length*5)+10
                     $Lab.Left = $OffSetX
                     $Lab.Top = $OffSetY
                     $Lab.Parent = $BigPanel
@@ -176,7 +190,7 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Number1.Maximum = 99999
                     $Number1.Minimum = -99999
                     $Number1.Width = 75
-                    $Number1.Left+=$Lab.Location.X+$Lab.Width+15
+                    $Number1.Left = $Lab.Location.X+$Lab.Width+15
                     $Number1.Top = $OffSetY
                     $Number1.Parent = $BigPanel
 
@@ -184,8 +198,8 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Number2.Maximum = 99999
                     $Number2.Minimum = -99999
                     $Number2.Width = 75
-                    $Number2.Left+=$Number1.Location.X+$Number1.Width+15
-                    $Number2.Top+=$OffSetY
+                    $Number2.Left = $Number1.Location.X+$Number1.Width+15
+                    $Number2.Top = $OffSetY
                     $Number2.Parent = $BigPanel
                 }
                 'int'{
@@ -243,40 +257,64 @@ $Draw = [System.Windows.Forms.Button]::new()
 $Draw.Text = "Draw"
 $Draw.Location = [System.Drawing.Point]::new(0,200)
 $Draw.Add_Click({
-    $InputArgs = $(ForEach($Control in $BigPanel.Controls){
-        Switch($Control.GetType()){
-            ([System.Windows.Forms.TextBox]){
-                $Control.Text
-            }
-            ([System.Windows.Forms.NumericUpDown]){
-                $Control.Value
-            }
-            ([System.Windows.Forms.Button]){
-                If($Control.Text -match "Font"){
-                    $Control.Font
-                }Else{
-                    $Color = $Control.BackColor
-                    If($Control.Text -match 'Pen'){
-                        [System.Drawing.Pen]::new($Color)
+    Try{
+        $Points = $false
+        $Prev = $null
+        $InputArgs = $(ForEach($Control in $BigPanel.Controls){
+            Switch($Control.GetType()){
+                ([System.Windows.Forms.TextBox]){
+                    $Control.Text
+                }
+                ([System.Windows.Forms.NumericUpDown]){
+                    If($Points -and $Prev.GetType() -eq [System.Windows.Forms.NumericUpDown]){
+                        [System.Drawing.Point]::new($Prev.Value,$Control.Value)
+                        $Prev = $null
+                    }ElseIf(!$Points){
+                        $Control.Value
+                    }
+                }
+                ([System.Windows.Forms.Button]){
+                    If($Control.Text -match "Font"){
+                        $Control.Font
+                    }ElseIf($Control.Text -match "(Pen|Brush)"){
+                        $Color = $Control.BackColor
+                        If($Control.Text -match 'Pen'){
+                            [System.Drawing.Pen]::new($Color)
+                        }Else{
+                            [System.Drawing.SolidBrush]::new($Color)
+                        }
+                    }ElseIf($Control.Text -notmatch '\+'){
+                        [System.Drawing.Image]::FromFile($Control.Text)
                     }Else{
-                        [System.Drawing.SolidBrush]::new($Color)
+                        $Points = $true
                     }
                 }
             }
+            $Prev = $Control
+        })
+        If($Points){
+            $PointArray = [System.Drawing.Point[]]::new(($InputArgs.Count-1))
+            For($i = 1; $i -lt $InputArgs.Count; $i++){
+                $PointArray[($i-1)] = $InputArgs[$i]
+            }
+            $InputArgs = @($InputArgs[0],$PointArray)
         }
-    })
-    $ObjId = "$($ControllerTable.Count) $($PassiveList.SelectedItem)"
-    $ActiveList.Items.Add($ObjId)
 
-    $ControllerTable.$ObjId = $InputArgs
-    $ControllerTable.Count++
+        $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
+        $Cmd = $Cmd -join ''
+        $Cmd = $Cmd.TrimEnd(',')+')'
+        $Cmd = '$Jraphics.'+$PassiveList.SelectedItem+'('+$Cmd
+        [Void][ScriptBlock]::Create($Cmd).Invoke()
 
-    $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
-    $Cmd = $Cmd -join ''
-    $Cmd = $Cmd.TrimEnd(',')+')'
-    $Cmd = '$Jraphics.'+$PassiveList.SelectedItem+'('+$Cmd
-    [Void][ScriptBlock]::Create($Cmd).Invoke()
-    #$Jraphics.DrawLine($InputArgs[0],$InputArgs[1],$InputArgs[2])
+        $ObjId = "$($ControllerTable.Count) $($PassiveList.SelectedItem)"
+        $ActiveList.Items.Add($ObjId)
+
+        $ControllerTable.$ObjId = $InputArgs
+        $ControllerTable.Count++
+    }Catch{
+        Write-Host "BAD ARGS"
+        Write-Host $Error[0]
+    }
 })
 $Draw.Parent = $ControllerForm
 
