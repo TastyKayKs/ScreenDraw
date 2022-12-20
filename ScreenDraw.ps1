@@ -537,5 +537,3 @@ $Run.Close()
 
 $Pow.Dispose()
 $Run.Dispose()
-
-$ControllerForm.Size
