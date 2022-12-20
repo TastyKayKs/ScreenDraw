@@ -4,28 +4,40 @@ $ControllerTable.Count = 0
 
 $ControllerForm = [System.Windows.Forms.Form]::new()
 $ControllerForm.Text = "Screen Draw"
-$ControllerForm.Size = [System.Drawing.Size]::new(500,500)
+$ControllerForm.Height = 589
+$ControllerForm.Width = 316
 
 $ActiveList = [System.Windows.Forms.ListBox]::new()
+$ActiveList.Location = [System.Drawing.Size]::new(5,10)
+$ActiveList.Width = 160
+$ActiveList.Height = 210
 $ActiveList.ScrollAlwaysVisible = $true
 $ActiveList.Parent = $ControllerForm
 
+$BigPanel = [System.Windows.Forms.Panel]::new()
+$BigPanel.Top = 300
+$BigPanel.Width = 300
+$BigPanel.Height = 250
+$BigPanel.AutoScroll = $true
+$BigPanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$BigPanel.Parent = $ControllerForm
+
 $PassiveList = [System.Windows.Forms.ListBox]::new()
-$PassiveList.Location = [System.Drawing.Size]::new(100,150)
+$PassiveList.Left = 100
+$PassiveList.Top = 225
+$PassiveList.Height = 70
+$PassiveList.Width = 200
 $PassiveList.ScrollAlwaysVisible = $true
 $PassiveList.Add_SelectedIndexChanged({
-    $BigPanel.Controls.Clear()
-
-    $OffSetX = 0
-    $OffSetY = 0
+    Try{$BigPanel.Controls.Clear()}Catch{}
 
     $DrawlingCapes[$This.SelectedIndex] | %{
         $Split = $_.Split(',')
         $Method = $Split[0]
         $Params = $Split[1..($Split.Length - 1)]
 
-        $OffSetX = 30
-        $OffSetY = 30
+        $OffSetX = 10
+        $OffSetY = 10
 
         $Params | %{
             $Type = $_.Split()[0].Split('.')[-1]
@@ -42,6 +54,16 @@ $PassiveList.Add_SelectedIndexChanged({
                         $ColorDialog = [System.Windows.Forms.ColorDialog]::new()
                         $ColorDialog.ShowDialog()
                         $This.BackColor = $ColorDialog.Color
+                        $Lum = [Math]::Sqrt(
+                            $This.BackColor.R * $This.BackColor.R * 0.299 +
+                            $This.BackColor.G * $This.BackColor.G * 0.587 +
+                            $This.BackColor.B * $This.BackColor.B * 0.114
+                        )
+                        If($Lum -gt 130){
+                            $This.ForeColor = [System.Drawing.Color]::Black
+                        }Else{
+                            $This.ForeColor = [System.Drawing.Color]::White
+                        }
                         $This.Parent.Select()
                     })
                     $Color.Parent = $BigPanel
@@ -55,6 +77,16 @@ $PassiveList.Add_SelectedIndexChanged({
                         $ColorDialog = [System.Windows.Forms.ColorDialog]::new()
                         $ColorDialog.ShowDialog()
                         $This.BackColor = $ColorDialog.Color
+                        $Lum = [Math]::Sqrt(
+                            $This.BackColor.R * $This.BackColor.R * 0.299 +
+                            $This.BackColor.G * $This.BackColor.G * 0.587 +
+                            $This.BackColor.B * $This.BackColor.B * 0.114
+                        )
+                        If($Lum -gt 130){
+                            $This.ForeColor = [System.Drawing.Color]::Black
+                        }Else{
+                            $This.ForeColor = [System.Drawing.Color]::White
+                        }
                         $This.Parent.Select()
                     })
                     $Color.Parent = $BigPanel
@@ -108,7 +140,7 @@ $PassiveList.Add_SelectedIndexChanged({
                 'Point'{
                     $Lab = [System.Windows.Forms.Label]::new()
                     $Lab.Text = $Label
-                    $Lab.Width = ($Label.Length*5)+10
+                    $Lab.Width = ($Lab.Text.Length*6)+10
                     $Lab.Left = $OffSetX
                     $Lab.Top+=$OffSetY
                     $Lab.Parent = $BigPanel
@@ -150,7 +182,7 @@ $PassiveList.Add_SelectedIndexChanged({
 
                         $Lab = [System.Windows.Forms.Label]::new()
                         $Lab.Text = "points"
-                        $Lab.Width = ($Lab.Text.Length*5)+10
+                        $Lab.Width = ($Lab.Text.Length*6)+10
                         $Lab.Left = $This.Location.X
                         $Lab.Top = $TempOffsetY
                         $Lab.Parent = $BigPanel
@@ -179,7 +211,7 @@ $PassiveList.Add_SelectedIndexChanged({
 
                     $Lab = [System.Windows.Forms.Label]::new()
                     $Lab.Text = $Label
-                    $Lab.Width = ($Lab.Text.Length*5)+10
+                    $Lab.Width = ($Lab.Text.Length*6)+10
                     $Lab.Left = $OffSetX
                     $Lab.Top = $OffSetY
                     $Lab.Parent = $BigPanel
@@ -205,7 +237,7 @@ $PassiveList.Add_SelectedIndexChanged({
                 'int'{
                     $Lab = [System.Windows.Forms.Label]::new()
                     $Lab.Text = $Label
-                    $Lab.Width = ($Label.Length*5)+10
+                    $Lab.Width = ($Lab.Text.Length*6)+10
                     $Lab.Left+=$OffSetX
                     $Lab.Top+=$OffSetY
                     $Lab.Parent = $BigPanel
@@ -255,7 +287,9 @@ $PassiveList.SelectedIndex = 0
 
 $Draw = [System.Windows.Forms.Button]::new()
 $Draw.Text = "Draw"
-$Draw.Location = [System.Drawing.Point]::new(0,200)
+$Draw.Width = 87
+$Draw.Left = 7
+$Draw.Top = $PassiveList.Top+$PassiveList.Height-$Draw.Height
 $Draw.Add_Click({
     Try{
         $Points = $false
@@ -320,7 +354,9 @@ $Draw.Parent = $ControllerForm
 
 $Remove = [System.Windows.Forms.Button]::new()
 $Remove.Text = "Remove"
-$Remove.Location = [System.Drawing.Point]::new(0,150)
+$Remove.Width = 87
+$Remove.Left = 7
+$Remove.Top = $PassiveList.Top
 $Remove.Add_Click({
     Try{
         $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
@@ -344,7 +380,7 @@ $ZoomBoxSize+=2
 
 $ZoomBox = [System.Windows.Forms.GroupBox]::new()
 $ZoomBox.Size = [System.Drawing.Size]::new($ZoomBoxSize,($ZoomBoxSize+7))
-$ZoomBox.Location = [System.Drawing.Point]::new(150,5)
+$ZoomBox.Location = [System.Drawing.Point]::new(175,5)
 $ZoomBox.Parent = $ControllerForm
 
 $CenterDot = [System.Windows.Forms.Panel]::new()
@@ -356,34 +392,10 @@ $CenterDot.BackColor = [System.Drawing.Color]::Black
 $CenterDot.Parent = $ControllerForm
 $CenterDot.BringToFront()
 
-$MouseTrack = [System.Windows.Forms.Button]::new()
-$MouseTrack.Text = "Mouse Inf"
-$MouseTrack.Location = [System.Drawing.Point]::new(0,175)
-$MouseTrack.Add_MouseMove({
-    If([System.Windows.Forms.UserControl]::MouseButtons.ToString() -match 'Left'){
-        $PH = [System.Windows.Forms.Cursor]::Position
-
-        $XCoord.Value = $PH.X
-        $YCoord.Value = $PH.Y
-
-        $Bounds = [System.Drawing.Rectangle]::new($PH.X-7,$PH.Y-7,15,15)
-        $BMP = [System.Drawing.Bitmap]::new($Bounds.Width, $Bounds.Height)
-        ([System.Drawing.Graphics]::FromImage($BMP)).CopyFromScreen($Bounds.Location, [System.Drawing.Point]::Empty, $Bounds.Size)
-
-        $BMPBig = [System.Drawing.Bitmap]::new(128, 128)
-        $GraphicsBig = [System.Drawing.Graphics]::FromImage($BMPBig)
-        $GraphicsBig.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
-        $GraphicsBig.DrawImage($BMP,1,7,128,128)
-        $ZoomBox.BackgroundImage = $BMPBig
-        $ControllerForm.Refresh()
-    }
-})
-$MouseTrack.Parent = $ControllerForm
-
-
 $XCoord = [System.Windows.Forms.NumericUpDown]::new()
-$XCoord.Size = [System.Drawing.Size]::new(50,25)
-$XCoord.Location = [System.Drawing.Point]::new(300,150)
+$XCoord.Size = [System.Drawing.Size]::new(100,25)
+$XCoord.Left = $ZoomBox.Location.X+20
+$XCoord.Top = $ZoomBox.Location.Y+$ZoomBox.Height+5
 $XCoord.Maximum = 99999
 $XCoord.Minimum = -99999
 $XCoord.Add_ValueChanged({
@@ -405,15 +417,17 @@ $XCoord.Parent = $ControllerForm
 
 $XCoordLabel = [System.Windows.Forms.Label]::new()
 $XCoordLabel.Text = "X:"
+$XCoordLabel.Width = ($XCoordLabel.Text.Length*6)+10
+$XCoordLabel.Height = 15
 $XCoordLabel.Location = $XCoord.Location
 $XCoordLabel.Left-=20
 $XCoordLabel.Top+=3
 $XCoordLabel.Parent = $ControllerForm
 
 $YCoord = [System.Windows.Forms.NumericUpDown]::new()
-$YCoord.Size = [System.Drawing.Size]::new(50,25)
+$YCoord.Size = [System.Drawing.Size]::new(100,25)
 $YCoord.Location = $XCoord.Location
-$YCoord.Top+=30
+$YCoord.Top+=$XCoord.Height+5
 $YCoord.Maximum = 99999
 $YCoord.Minimum = -99999
 $YCoord.Add_ValueChanged({
@@ -435,17 +449,53 @@ $YCoord.Parent = $ControllerForm
 
 $YCoordLabel = [System.Windows.Forms.Label]::new()
 $YCoordLabel.Text = "Y:"
+$YCoordLabel.Width = ($XCoordLabel.Text.Length*6)+10
+$YCoordLabel.Height = 15
 $YCoordLabel.Location = $YCoord.Location
 $YCoordLabel.Left-=20
 $YCoordLabel.Top+=3
 $YCoordLabel.Parent = $ControllerForm
 
-$BigPanel = [System.Windows.Forms.Panel]::new()
-$BigPanel.Top = 250
-$BigPanel.Width = 300
-$BigPanel.Height = 300
-$BigPanel.AutoScroll = $true
-$BigPanel.Parent = $ControllerForm
+$MouseTrack = [System.Windows.Forms.Button]::new()
+$MouseTrack.Text = "Click n' Drag"
+$MouseTrack.Width = 120
+$MouseTrack.Height = 30
+$MouseTrack.Left = $ZoomBox.Left+1
+$MouseTrack.Top = $YCoord.Top+$YCoord.Height+7
+$MouseTrack.Add_MouseMove({
+    If([System.Windows.Forms.UserControl]::MouseButtons.ToString() -match 'Left'){
+        $PH = [System.Windows.Forms.Cursor]::Position
+
+        $XCoord.Value = $PH.X
+        $YCoord.Value = $PH.Y
+
+        $Bounds = [System.Drawing.Rectangle]::new($PH.X-7,$PH.Y-7,15,15)
+        $BMP = [System.Drawing.Bitmap]::new($Bounds.Width, $Bounds.Height)
+        ([System.Drawing.Graphics]::FromImage($BMP)).CopyFromScreen($Bounds.Location, [System.Drawing.Point]::Empty, $Bounds.Size)
+
+        $BMPBig = [System.Drawing.Bitmap]::new(128, 128)
+        $GraphicsBig = [System.Drawing.Graphics]::FromImage($BMPBig)
+        $GraphicsBig.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+        $GraphicsBig.DrawImage($BMP,1,7,128,128)
+        $ZoomBox.BackgroundImage = $BMPBig
+
+        $PixelColor = $BMPBig.GetPixel(64,64)
+
+        $Lum = [Math]::Sqrt(
+            $PixelColor.R * $PixelColor.R * 0.299 +
+            $PixelColor.G * $PixelColor.G * 0.587 +
+            $PixelColor.B * $PixelColor.B * 0.114
+        )
+        If($Lum -gt 130){
+            $CenterDot.BackColor = [System.Drawing.Color]::Black
+        }Else{
+            $CenterDot.BackColor = [System.Drawing.Color]::White
+        }
+
+        $ControllerForm.Refresh()
+    }
+})
+$MouseTrack.Parent = $ControllerForm
 
 $DrawingForm = [System.Windows.Forms.Form]::new()
 $DrawingForm.FormBorderStyle = [System.Windows.Forms.BorderStyle]::None
@@ -488,5 +538,4 @@ $Run.Close()
 $Pow.Dispose()
 $Run.Dispose()
 
-
-#$GroupBoxColorSizeSize = [System.Windows.Forms.GroupBox]::new()
+$ControllerForm.Size
