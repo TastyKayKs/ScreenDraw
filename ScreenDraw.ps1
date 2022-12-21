@@ -14,13 +14,103 @@ $ActiveList.Height = 210
 $ActiveList.ScrollAlwaysVisible = $true
 $ActiveList.Parent = $ControllerForm
 
-$BigPanel = [System.Windows.Forms.Panel]::new()
-$BigPanel.Top = 300
-$BigPanel.Width = 300
-$BigPanel.Height = 250
-$BigPanel.AutoScroll = $true
-$BigPanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-$BigPanel.Parent = $ControllerForm
+$Remove = [System.Windows.Forms.Button]::new()
+$Remove.Text = "Remove"
+$Remove.Width = 87
+$Remove.Left = 7
+$Remove.Top = $PassiveList.Top-1
+$Remove.Add_Click({
+    Try{
+        $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
+
+        $ActiveList.Items | %{$DrawingForm.Refresh()}{
+            $ObjId = [String]$_
+            $InputArgs = $ControllerTable.$ObjId
+            #$Jraphics.DrawLine($InputArgs[0],$InputArgs[1],$InputArgs[2])
+            $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
+            $Cmd = $Cmd -join ''
+            $Cmd = $Cmd.TrimEnd(',')+')'
+            $Cmd = '$Jraphics.'+$ObjId.Split()[-1]+'('+$Cmd
+            [Void][ScriptBlock]::Create($Cmd).Invoke()
+        }
+    }Catch{}
+})
+$Remove.Parent = $ControllerForm
+
+$FreeHand = [System.Windows.Forms.Button]::new()
+$FreeHand.Text = "Free Draw"
+$FreeHand.Size = $Remove.Size
+$FreeHand.Width = $Remove.Width/2
+$Freehand.Left = $Remove.Location.X
+$FreeHand.Top = $Remove.Top+$Remove.Height+1
+$FreeHand.Parent = $ControllerForm
+
+$Draw = [System.Windows.Forms.Button]::new()
+$Draw.Text = "Draw"
+$Draw.Width = 87
+$Draw.Left = $FreeHand.Left
+$Draw.Top = $FreeHand.Top+$FreeHand.Height+1
+$Draw.Add_Click({
+    Try{
+        $Points = $false
+        $Prev = $null
+        $InputArgs = $(ForEach($Control in $BigPanel.Controls){
+            Switch($Control.GetType()){
+                ([System.Windows.Forms.TextBox]){
+                    $Control.Text
+                }
+                ([System.Windows.Forms.NumericUpDown]){
+                    If($Points -and $Prev.GetType() -eq [System.Windows.Forms.NumericUpDown]){
+                        [System.Drawing.Point]::new($Prev.Value,$Control.Value)
+                        $Prev = $null
+                    }ElseIf(!$Points){
+                        $Control.Value
+                    }
+                }
+                ([System.Windows.Forms.Button]){
+                    If($Control.Text -match "Font"){
+                        $Control.Font
+                    }ElseIf($Control.Text -match "(Pen|Brush)"){
+                        $Color = $Control.BackColor
+                        If($Control.Text -match 'Pen'){
+                            [System.Drawing.Pen]::new($Color)
+                        }Else{
+                            [System.Drawing.SolidBrush]::new($Color)
+                        }
+                    }ElseIf($Control.Text -notmatch '\+'){
+                        [System.Drawing.Image]::FromFile($Control.Text)
+                    }Else{
+                        $Points = $true
+                    }
+                }
+            }
+            $Prev = $Control
+        })
+        If($Points){
+            $PointArray = [System.Drawing.Point[]]::new(($InputArgs.Count-1))
+            For($i = 1; $i -lt $InputArgs.Count; $i++){
+                $PointArray[($i-1)] = $InputArgs[$i]
+            }
+            $InputArgs = @($InputArgs[0],$PointArray)
+        }
+
+        $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
+        $Cmd = $Cmd -join ''
+        $Cmd = $Cmd.TrimEnd(',')+')'
+        $Cmd = '$Jraphics.'+$PassiveList.SelectedItem+'('+$Cmd
+        [Void][ScriptBlock]::Create($Cmd).Invoke()
+
+        $ObjId = "$($ControllerTable.Count) $($PassiveList.SelectedItem)"
+        $ActiveList.Items.Add($ObjId)
+
+        $ControllerTable.$ObjId = $InputArgs
+        $ControllerTable.Count++
+    }Catch{
+        Write-Host "BAD ARGS"
+        Write-Host $Error[0]
+    }
+})
+$Draw.Parent = $ControllerForm
 
 $PassiveList = [System.Windows.Forms.ListBox]::new()
 $PassiveList.Left = 100
@@ -47,6 +137,8 @@ $PassiveList.Add_SelectedIndexChanged({
             Switch($Type){
                 'Pen'{
                     $Color = [System.Windows.Forms.Button]::new()
+                    $Color.BackColor = [System.Drawing.Color]::Black
+                    $Color.ForeColor = [System.Drawing.Color]::White
                     $Color.Text = $Label
                     $Color.Left = $OffSetX
                     $Color.Top+=$OffSetY
@@ -70,6 +162,8 @@ $PassiveList.Add_SelectedIndexChanged({
                 }
                 'Brush'{
                     $Color = [System.Windows.Forms.Button]::new()
+                    $Color.BackColor = [System.Drawing.Color]::Black
+                    $Color.ForeColor = [System.Drawing.Color]::White
                     $Color.Text = $Label
                     $Color.Left = $OffSetX
                     $Color.Top+=$OffSetY
@@ -261,6 +355,14 @@ $PassiveList.Add_SelectedIndexChanged({
 })
 $PassiveList.Parent = $ControllerForm
 
+$BigPanel = [System.Windows.Forms.Panel]::new()
+$BigPanel.Top = 300
+$BigPanel.Width = 300
+$BigPanel.Height = 250
+$BigPanel.AutoScroll = $true
+$BigPanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$BigPanel.Parent = $ControllerForm
+
 $DrawlingCapes = "
 DrawLine,System.Drawing.Pen pen,int x1,int y1,int x2,int y2
 DrawEllipse,System.Drawing.Pen pen,int x,int y,int width,int height
@@ -284,96 +386,6 @@ DrawImageUnscaled,System.Drawing.Image image,int x,int y,int width,int height
 $DrawlingCapes = $DrawlingCapes.Split([System.Environment]::NewLine).Where({$_})
 $DrawlingCapes.ForEach({[Void]$PassiveList.Items.Add($_.Split(',')[0])})
 $PassiveList.SelectedIndex = 0
-
-$Draw = [System.Windows.Forms.Button]::new()
-$Draw.Text = "Draw"
-$Draw.Width = 87
-$Draw.Left = 7
-$Draw.Top = $PassiveList.Top+$PassiveList.Height-$Draw.Height
-$Draw.Add_Click({
-    Try{
-        $Points = $false
-        $Prev = $null
-        $InputArgs = $(ForEach($Control in $BigPanel.Controls){
-            Switch($Control.GetType()){
-                ([System.Windows.Forms.TextBox]){
-                    $Control.Text
-                }
-                ([System.Windows.Forms.NumericUpDown]){
-                    If($Points -and $Prev.GetType() -eq [System.Windows.Forms.NumericUpDown]){
-                        [System.Drawing.Point]::new($Prev.Value,$Control.Value)
-                        $Prev = $null
-                    }ElseIf(!$Points){
-                        $Control.Value
-                    }
-                }
-                ([System.Windows.Forms.Button]){
-                    If($Control.Text -match "Font"){
-                        $Control.Font
-                    }ElseIf($Control.Text -match "(Pen|Brush)"){
-                        $Color = $Control.BackColor
-                        If($Control.Text -match 'Pen'){
-                            [System.Drawing.Pen]::new($Color)
-                        }Else{
-                            [System.Drawing.SolidBrush]::new($Color)
-                        }
-                    }ElseIf($Control.Text -notmatch '\+'){
-                        [System.Drawing.Image]::FromFile($Control.Text)
-                    }Else{
-                        $Points = $true
-                    }
-                }
-            }
-            $Prev = $Control
-        })
-        If($Points){
-            $PointArray = [System.Drawing.Point[]]::new(($InputArgs.Count-1))
-            For($i = 1; $i -lt $InputArgs.Count; $i++){
-                $PointArray[($i-1)] = $InputArgs[$i]
-            }
-            $InputArgs = @($InputArgs[0],$PointArray)
-        }
-
-        $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
-        $Cmd = $Cmd -join ''
-        $Cmd = $Cmd.TrimEnd(',')+')'
-        $Cmd = '$Jraphics.'+$PassiveList.SelectedItem+'('+$Cmd
-        [Void][ScriptBlock]::Create($Cmd).Invoke()
-
-        $ObjId = "$($ControllerTable.Count) $($PassiveList.SelectedItem)"
-        $ActiveList.Items.Add($ObjId)
-
-        $ControllerTable.$ObjId = $InputArgs
-        $ControllerTable.Count++
-    }Catch{
-        Write-Host "BAD ARGS"
-        Write-Host $Error[0]
-    }
-})
-$Draw.Parent = $ControllerForm
-
-$Remove = [System.Windows.Forms.Button]::new()
-$Remove.Text = "Remove"
-$Remove.Width = 87
-$Remove.Left = 7
-$Remove.Top = $PassiveList.Top
-$Remove.Add_Click({
-    Try{
-        $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
-
-        $ActiveList.Items | %{$DrawingForm.Refresh()}{
-            $ObjId = [String]$_
-            $InputArgs = $ControllerTable.$ObjId
-            #$Jraphics.DrawLine($InputArgs[0],$InputArgs[1],$InputArgs[2])
-            $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
-            $Cmd = $Cmd -join ''
-            $Cmd = $Cmd.TrimEnd(',')+')'
-            $Cmd = '$Jraphics.'+$ObjId.Split()[-1]+'('+$Cmd
-            [Void][ScriptBlock]::Create($Cmd).Invoke()
-        }
-    }Catch{}
-})
-$Remove.Parent = $ControllerForm
 
 $ZoomBoxSize = 120
 $ZoomBoxSize+=2
