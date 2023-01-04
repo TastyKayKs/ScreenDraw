@@ -1,6 +1,16 @@
+Try{
+    Add-Type -Namespace "User" -Name "Keys" -MemberDefinition '
+        [DllImport("user32.dll")]
+        public static extern short GetKeyState(UInt16 virtualKeyCode);
+    '
+}Catch{}
+
 $ControllerTable = [hashtable]::Synchronized(@{})
 $ControllerTable.Kill = $false
 $ControllerTable.Count = 0
+$ControllerTable.UserKeys = [User.Keys]
+$ControllerTable.LeftClick = $false
+$ControllerTable.RightClick = $false
 
 $ControllerForm = [System.Windows.Forms.Form]::new()
 $ControllerForm.Text = "Screen Draw"
@@ -13,104 +23,6 @@ $ActiveList.Width = 160
 $ActiveList.Height = 210
 $ActiveList.ScrollAlwaysVisible = $true
 $ActiveList.Parent = $ControllerForm
-
-$Remove = [System.Windows.Forms.Button]::new()
-$Remove.Text = "Remove"
-$Remove.Width = 87
-$Remove.Left = 7
-$Remove.Top = $PassiveList.Top-1
-$Remove.Add_Click({
-    Try{
-        $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
-
-        $ActiveList.Items | %{$DrawingForm.Refresh()}{
-            $ObjId = [String]$_
-            $InputArgs = $ControllerTable.$ObjId
-            #$Jraphics.DrawLine($InputArgs[0],$InputArgs[1],$InputArgs[2])
-            $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
-            $Cmd = $Cmd -join ''
-            $Cmd = $Cmd.TrimEnd(',')+')'
-            $Cmd = '$Jraphics.'+$ObjId.Split()[-1]+'('+$Cmd
-            [Void][ScriptBlock]::Create($Cmd).Invoke()
-        }
-    }Catch{}
-})
-$Remove.Parent = $ControllerForm
-
-$FreeHand = [System.Windows.Forms.Button]::new()
-$FreeHand.Text = "Free Draw"
-$FreeHand.Size = $Remove.Size
-$FreeHand.Width = $Remove.Width/2
-$Freehand.Left = $Remove.Location.X
-$FreeHand.Top = $Remove.Top+$Remove.Height+1
-$FreeHand.Parent = $ControllerForm
-
-$Draw = [System.Windows.Forms.Button]::new()
-$Draw.Text = "Draw"
-$Draw.Width = 87
-$Draw.Left = $FreeHand.Left
-$Draw.Top = $FreeHand.Top+$FreeHand.Height+1
-$Draw.Add_Click({
-    Try{
-        $Points = $false
-        $Prev = $null
-        $InputArgs = $(ForEach($Control in $BigPanel.Controls){
-            Switch($Control.GetType()){
-                ([System.Windows.Forms.TextBox]){
-                    $Control.Text
-                }
-                ([System.Windows.Forms.NumericUpDown]){
-                    If($Points -and $Prev.GetType() -eq [System.Windows.Forms.NumericUpDown]){
-                        [System.Drawing.Point]::new($Prev.Value,$Control.Value)
-                        $Prev = $null
-                    }ElseIf(!$Points){
-                        $Control.Value
-                    }
-                }
-                ([System.Windows.Forms.Button]){
-                    If($Control.Text -match "Font"){
-                        $Control.Font
-                    }ElseIf($Control.Text -match "(Pen|Brush)"){
-                        $Color = $Control.BackColor
-                        If($Control.Text -match 'Pen'){
-                            [System.Drawing.Pen]::new($Color)
-                        }Else{
-                            [System.Drawing.SolidBrush]::new($Color)
-                        }
-                    }ElseIf($Control.Text -notmatch '\+'){
-                        [System.Drawing.Image]::FromFile($Control.Text)
-                    }Else{
-                        $Points = $true
-                    }
-                }
-            }
-            $Prev = $Control
-        })
-        If($Points){
-            $PointArray = [System.Drawing.Point[]]::new(($InputArgs.Count-1))
-            For($i = 1; $i -lt $InputArgs.Count; $i++){
-                $PointArray[($i-1)] = $InputArgs[$i]
-            }
-            $InputArgs = @($InputArgs[0],$PointArray)
-        }
-
-        $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
-        $Cmd = $Cmd -join ''
-        $Cmd = $Cmd.TrimEnd(',')+')'
-        $Cmd = '$Jraphics.'+$PassiveList.SelectedItem+'('+$Cmd
-        [Void][ScriptBlock]::Create($Cmd).Invoke()
-
-        $ObjId = "$($ControllerTable.Count) $($PassiveList.SelectedItem)"
-        $ActiveList.Items.Add($ObjId)
-
-        $ControllerTable.$ObjId = $InputArgs
-        $ControllerTable.Count++
-    }Catch{
-        Write-Host "BAD ARGS"
-        Write-Host $Error[0]
-    }
-})
-$Draw.Parent = $ControllerForm
 
 $PassiveList = [System.Windows.Forms.ListBox]::new()
 $PassiveList.Left = 100
@@ -354,6 +266,169 @@ $PassiveList.Add_SelectedIndexChanged({
     }
 })
 $PassiveList.Parent = $ControllerForm
+
+$Remove = [System.Windows.Forms.Button]::new()
+$Remove.Text = "Remove"
+$Remove.Width = 87
+$Remove.Left = 7
+$Remove.Top = $PassiveList.Top-1
+$Remove.Add_Click({
+    Try{
+        $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
+
+        $ActiveList.Items | %{$DrawingForm.Refresh()}{
+            $ObjId = [String]$_
+            $InputArgs = $ControllerTable.$ObjId
+            $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
+            $Cmd = $Cmd -join ''
+            $Cmd = $Cmd.TrimEnd(',')+')'
+            $Cmd = '$Jraphics.'+$ObjId.Split()[-1]+'('+$Cmd
+            [Void][ScriptBlock]::Create($Cmd).Invoke()
+        }
+    }Catch{}
+})
+$Remove.Parent = $ControllerForm
+
+$FreeHand = [System.Windows.Forms.Button]::new()
+$FreeHand.Text = "Free Draw"
+$FreeHand.Size = $Remove.Size
+$FreeHand.Width = $Remove.Width/2
+$FreeHand.Left = $Remove.Location.X
+$FreeHand.Top = $Remove.Top+$Remove.Height+1
+$FreeHand.Add_Click({
+    $This.Parent.Enabled = $False
+
+    $FreeDrawRunspace = [RunspaceFactory]::CreateRunspace()
+    $FreeDrawRunspace.Open()
+    $FreeDrawPosh = [Powershell]::Create()
+    $FreeDrawPosh.Runspace = $FreeDrawRunspace
+    [Void]$FreeDrawPosh.AddScript({
+        param($CT)
+
+        $CT.RightClick = $false
+        While($CT.UserKeys::GetKeyState(0x02) -ge 0){
+            Sleep -Milliseconds 100
+            $CT.LeftClick = $CT.UserKeys::GetKeyState(0x01) -lt 0
+        }
+        $CT.RightClick = $true
+    })
+    [Void]$FreeDrawPosh.AddParameter('CT',$ControllerTable)
+    $FreeDrawJob=$FreeDrawPosh.BeginInvoke()
+
+    $Pen = [System.Drawing.Pen]::new($FreeHandColor.BackColor)
+    $Pen.Width = 5
+
+    While(!$ControllerTable.RightClick){
+        Sleep -Milliseconds 100
+        While($ControllerTable.LeftClick){
+            $LastPos = [System.Windows.Forms.Cursor]::Position
+            Sleep -Milliseconds 10
+            $Jraphics.DrawLine($Pen, $LastPos.X, $LastPos.Y, [System.Windows.Forms.Cursor]::Position.X, [System.Windows.Forms.Cursor]::Position.Y)
+        }
+    }
+
+    $ControllerTable.RightClick = $false
+
+    [Void]$FreeDrawPosh.EndInvoke($FreeDrawJob)
+    $FreeDrawRunspace.Close()
+
+    $This.Parent.Enabled = $true
+    $This.Parent.BringToFront()
+    $This.Parent.Focus()
+})
+$FreeHand.Parent = $ControllerForm
+
+$FreeHandColor = [System.windows.Forms.Button]::new()
+$FreeHandColor.Text = "Color"
+$FreeHandColor.Width = $Remove.Width/2
+$FreeHandColor.Left = $Remove.Left+$FreeHand.Width-1
+$FreeHandColor.Top = $FreeHand.Top
+$FreeHandColor.BackColor = [System.Drawing.Color]::Black
+$FreeHandColor.ForeColor = [System.Drawing.Color]::White
+$FreeHandColor.Add_Click({
+    $ColorDialog = [System.Windows.Forms.ColorDialog]::new()
+    $ColorDialog.ShowDialog()
+    $This.BackColor = $ColorDialog.Color
+    $Lum = [Math]::Sqrt(
+        $This.BackColor.R * $This.BackColor.R * 0.299 +
+        $This.BackColor.G * $This.BackColor.G * 0.587 +
+        $This.BackColor.B * $This.BackColor.B * 0.114
+    )
+    If($Lum -gt 130){
+        $This.ForeColor = [System.Drawing.Color]::Black
+    }Else{
+        $This.ForeColor = [System.Drawing.Color]::White
+    }
+    $This.Parent.Focus()
+})
+$FreeHandColor.Parent = $ControllerForm
+
+$Draw = [System.Windows.Forms.Button]::new()
+$Draw.Text = "Draw"
+$Draw.Width = $Remove.Width
+$Draw.Left = $Remove.Left
+$Draw.Top = $FreeHand.Top+$FreeHand.Height+1
+$Draw.Add_Click({
+    Try{
+        $Points = $false
+        $Prev = $null
+        $InputArgs = $(ForEach($Control in $BigPanel.Controls){
+            Switch($Control.GetType()){
+                ([System.Windows.Forms.TextBox]){
+                    $Control.Text
+                }
+                ([System.Windows.Forms.NumericUpDown]){
+                    If($Points -and $Prev.GetType() -eq [System.Windows.Forms.NumericUpDown]){
+                        [System.Drawing.Point]::new($Prev.Value,$Control.Value)
+                        $Prev = $null
+                    }ElseIf(!$Points){
+                        $Control.Value
+                    }
+                }
+                ([System.Windows.Forms.Button]){
+                    If($Control.Text -match "Font"){
+                        $Control.Font
+                    }ElseIf($Control.Text -match "(Pen|Brush)"){
+                        $Color = $Control.BackColor
+                        If($Control.Text -match 'Pen'){
+                            [System.Drawing.Pen]::new($Color)
+                        }Else{
+                            [System.Drawing.SolidBrush]::new($Color)
+                        }
+                    }ElseIf($Control.Text -notmatch '\+'){
+                        [System.Drawing.Image]::FromFile($Control.Text)
+                    }Else{
+                        $Points = $true
+                    }
+                }
+            }
+            $Prev = $Control
+        })
+        If($Points){
+            $PointArray = [System.Drawing.Point[]]::new(($InputArgs.Count-1))
+            For($i = 1; $i -lt $InputArgs.Count; $i++){
+                $PointArray[($i-1)] = $InputArgs[$i]
+            }
+            $InputArgs = @($InputArgs[0],$PointArray)
+        }
+
+        $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
+        $Cmd = $Cmd -join ''
+        $Cmd = $Cmd.TrimEnd(',')+')'
+        $Cmd = '$Jraphics.'+$PassiveList.SelectedItem+'('+$Cmd
+        [Void][ScriptBlock]::Create($Cmd).Invoke()
+
+        $ObjId = "$($ControllerTable.Count) $($PassiveList.SelectedItem)"
+        $ActiveList.Items.Add($ObjId)
+
+        $ControllerTable.$ObjId = $InputArgs
+        $ControllerTable.Count++
+    }Catch{
+        Write-Host "BAD ARGS"
+        Write-Host $Error[0]
+    }
+})
+$Draw.Parent = $ControllerForm
 
 $BigPanel = [System.Windows.Forms.Panel]::new()
 $BigPanel.Top = 300
