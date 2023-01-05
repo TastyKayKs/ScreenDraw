@@ -8,6 +8,7 @@ Try{
 $ControllerTable = [hashtable]::Synchronized(@{})
 $ControllerTable.Kill = $false
 $ControllerTable.Count = 0
+$ControllerTable.FreeDrawCoords = $null
 $ControllerTable.UserKeys = [User.Keys]
 $ControllerTable.LeftClick = $false
 $ControllerTable.RightClick = $false
@@ -296,7 +297,7 @@ $FreeHand.Width = $Remove.Width/2
 $FreeHand.Left = $Remove.Location.X
 $FreeHand.Top = $Remove.Top+$Remove.Height+1
 $FreeHand.Add_Click({
-    $This.Parent.Enabled = $False
+    $This.Parent.Hide()
 
     $FreeDrawRunspace = [RunspaceFactory]::CreateRunspace()
     $FreeDrawRunspace.Open()
@@ -307,10 +308,11 @@ $FreeHand.Add_Click({
 
         $CT.RightClick = $false
         While($CT.UserKeys::GetKeyState(0x02) -ge 0){
-            Sleep -Milliseconds 100
+            Sleep -Milliseconds 50
             $CT.LeftClick = $CT.UserKeys::GetKeyState(0x01) -lt 0
         }
         $CT.RightClick = $true
+        $CT.LeftClick = $false
     })
     [Void]$FreeDrawPosh.AddParameter('CT',$ControllerTable)
     $FreeDrawJob=$FreeDrawPosh.BeginInvoke()
@@ -319,11 +321,13 @@ $FreeHand.Add_Click({
     $Pen.Width = 5
 
     While(!$ControllerTable.RightClick){
-        Sleep -Milliseconds 100
+        Sleep -Milliseconds 50
+        $LastPos = [System.Windows.Forms.Cursor]::Position
         While($ControllerTable.LeftClick){
+            $CurrPos = [System.Windows.Forms.Cursor]::Position
+            $Jraphics.DrawLine($Pen, $LastPos.X, $LastPos.Y, $CurrPos.X, $CurrPos.Y)
             $LastPos = [System.Windows.Forms.Cursor]::Position
-            Sleep -Milliseconds 10
-            $Jraphics.DrawLine($Pen, $LastPos.X, $LastPos.Y, [System.Windows.Forms.Cursor]::Position.X, [System.Windows.Forms.Cursor]::Position.Y)
+            $Jraphics.DrawLine($Pen, $CurrPos.X, $CurrPos.Y, $LastPos.X, $LastPos.Y)
         }
     }
 
@@ -332,8 +336,7 @@ $FreeHand.Add_Click({
     [Void]$FreeDrawPosh.EndInvoke($FreeDrawJob)
     $FreeDrawRunspace.Close()
 
-    $This.Parent.Enabled = $true
-    $This.Parent.BringToFront()
+    $This.Parent.Show()
     $This.Parent.Focus()
 })
 $FreeHand.Parent = $ControllerForm
