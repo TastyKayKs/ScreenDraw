@@ -320,18 +320,29 @@ $FreeHand.Add_Click({
     $Pen = [System.Drawing.Pen]::new($FreeHandColor.BackColor)
     $Pen.Width = 5
 
+    $Points = [System.Drawing.Point[]]@()
     While(!$ControllerTable.RightClick){
         Sleep -Milliseconds 50
         $LastPos = [System.Windows.Forms.Cursor]::Position
         While($ControllerTable.LeftClick){
             $CurrPos = [System.Windows.Forms.Cursor]::Position
             $Jraphics.DrawLine($Pen, $LastPos.X, $LastPos.Y, $CurrPos.X, $CurrPos.Y)
+            $Points+=($LastPos)
+            $Points+=($CurrPos)
             $LastPos = [System.Windows.Forms.Cursor]::Position
             $Jraphics.DrawLine($Pen, $CurrPos.X, $CurrPos.Y, $LastPos.X, $LastPos.Y)
+            $Points+=($CurrPos)
+            $Points+=($LastPos)
         }
     }
 
     $ControllerTable.RightClick = $false
+    $ControllerTable.LeftClick = $false
+
+    $ObjId = "$($ControllerTable.Count) DrawLines"
+    $ControllerTable.$ObjId = @($Pen,$Points)
+
+    $ActiveList.Items.Add($ObjId)
 
     [Void]$FreeDrawPosh.EndInvoke($FreeDrawJob)
     $FreeDrawRunspace.Close()
