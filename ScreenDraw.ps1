@@ -21,7 +21,7 @@ $ControllerForm.Width = 316
 $ActiveList = [System.Windows.Forms.ListBox]::new()
 $ActiveList.Location = [System.Drawing.Size]::new(5,10)
 $ActiveList.Width = 160
-$ActiveList.Height = 210
+$ActiveList.Height = 189
 $ActiveList.ScrollAlwaysVisible = $true
 $ActiveList.Parent = $ControllerForm
 
@@ -272,7 +272,7 @@ $Remove = [System.Windows.Forms.Button]::new()
 $Remove.Text = "Remove"
 $Remove.Width = 87
 $Remove.Left = 7
-$Remove.Top = $PassiveList.Top-1
+$Remove.Top = $ActiveList.Top+$ActiveList.Height+1
 $Remove.Add_Click({
     Try{
         $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
@@ -290,12 +290,25 @@ $Remove.Add_Click({
 })
 $Remove.Parent = $ControllerForm
 
+$ClearAll = [System.Windows.Forms.Button]::new()
+$ClearAll.Text = "ClearAll"
+$ClearAll.Width = $Remove.Width
+$ClearAll.Left = $Remove.Left
+$ClearAll.Top = $Remove.Top+$Remove.Height+1
+$ClearAll.Add_Click({
+    Try{
+        $ActiveList.Items.Clear()
+        $DrawingForm.Refresh()
+    }Catch{}
+})
+$ClearAll.Parent = $ControllerForm
+
 $FreeHand = [System.Windows.Forms.Button]::new()
 $FreeHand.Text = "Free Draw"
-$FreeHand.Size = $Remove.Size
-$FreeHand.Width = $Remove.Width/2
-$FreeHand.Left = $Remove.Location.X
-$FreeHand.Top = $Remove.Top+$Remove.Height+1
+$FreeHand.Size = $ClearAll.Size
+$FreeHand.Width = $ClearAll.Width/2
+$FreeHand.Left = $ClearAll.Location.X
+$FreeHand.Top = $ClearAll.Top+$ClearAll.Height+1
 $FreeHand.Add_Click({
     $This.Parent.Hide()
 
