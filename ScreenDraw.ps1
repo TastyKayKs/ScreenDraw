@@ -15,6 +15,7 @@ $ControllerTable.RightClick = $false
 
 $ControllerForm = [System.Windows.Forms.Form]::new()
 $ControllerForm.Text = "Screen Draw"
+$ControllerForm.TopMost = $True
 $ControllerForm.Height = 589
 $ControllerForm.Width = 316
 
@@ -278,7 +279,7 @@ $Remove.Add_Click({
         $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
 
         $ActiveList.Items | %{$DrawingForm.Refresh()}{
-            $ObjId = [String]$_
+            $ObjId = ([String]$_).Replace("FreeHand","DrawLines")
             $InputArgs = $ControllerTable.$ObjId
             $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
             $Cmd = $Cmd -join ''
@@ -291,7 +292,7 @@ $Remove.Add_Click({
 $Remove.Parent = $ControllerForm
 
 $ClearAll = [System.Windows.Forms.Button]::new()
-$ClearAll.Text = "ClearAll"
+$ClearAll.Text = "Clear All"
 $ClearAll.Width = $Remove.Width
 $ClearAll.Left = $Remove.Left
 $ClearAll.Top = $Remove.Top+$Remove.Height+1
@@ -304,13 +305,13 @@ $ClearAll.Add_Click({
 $ClearAll.Parent = $ControllerForm
 
 $FreeHand = [System.Windows.Forms.Button]::new()
-$FreeHand.Text = "Free Draw"
+$FreeHand.Text = "Pencil"
 $FreeHand.Size = $ClearAll.Size
 $FreeHand.Width = $ClearAll.Width/2
 $FreeHand.Left = $ClearAll.Location.X
 $FreeHand.Top = $ClearAll.Top+$ClearAll.Height+1
 $FreeHand.Add_Click({
-    $This.Parent.Hide()
+    $This.Parent.Opacity = 0.25
 
     $FreeDrawRunspace = [RunspaceFactory]::CreateRunspace()
     $FreeDrawRunspace.Open()
@@ -321,7 +322,7 @@ $FreeHand.Add_Click({
 
         $CT.RightClick = $false
         While($CT.UserKeys::GetKeyState(0x02) -ge 0){
-            Sleep -Milliseconds 50
+            Sleep -Milliseconds 25
             $CT.LeftClick = $CT.UserKeys::GetKeyState(0x01) -lt 0
         }
         $CT.RightClick = $true
@@ -333,8 +334,8 @@ $FreeHand.Add_Click({
     $Pen = [System.Drawing.Pen]::new($FreeHandColor.BackColor)
     $Pen.Width = 5
 
-    $Points = [System.Drawing.Point[]]@()
     While(!$ControllerTable.RightClick){
+        $Points = [System.Drawing.Point[]]@()
         Sleep -Milliseconds 50
         $LastPos = [System.Windows.Forms.Cursor]::Position
         While($ControllerTable.LeftClick){
@@ -347,21 +348,22 @@ $FreeHand.Add_Click({
             $Points+=($CurrPos)
             $Points+=($LastPos)
         }
+        If($Points.Count){
+            $ObjId = "$($ControllerTable.Count) FreeHand"
+            $ControllerTable.$ObjId = @($Pen,$Points)
+
+            $ActiveList.Items.Add($ObjId)
+            $ControllerTable.Count++
+        }
     }
 
     $ControllerTable.RightClick = $false
     $ControllerTable.LeftClick = $false
 
-    $ObjId = "$($ControllerTable.Count) DrawLines"
-    $ControllerTable.$ObjId = @($Pen,$Points)
-
-    $ActiveList.Items.Add($ObjId)
-
     [Void]$FreeDrawPosh.EndInvoke($FreeDrawJob)
     $FreeDrawRunspace.Close()
 
-    $This.Parent.Show()
-    $This.Parent.Focus()
+    $This.Parent.Opacity = 1
 })
 $FreeHand.Parent = $ControllerForm
 
@@ -635,7 +637,7 @@ $Pow.Runspace = $Run
 
     $DF.Show()
     While(!$CT.Kill){
-        Sleep 1
+        Sleep -Milliseconds 25
     }
     $DF.Close()
 })
