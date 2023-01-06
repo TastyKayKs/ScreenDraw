@@ -159,6 +159,7 @@ $Draw.Top = $FreeHand.Top+$FreeHand.Height+1
 $Draw.Add_Click({
     Try{
         $Points = $false
+        $Split = $false
         $Prev = $null
         $InputArgs = $(ForEach($Control in $BigPanel.Controls){
             Switch($Control.GetType()){
@@ -183,6 +184,10 @@ $Draw.Add_Click({
                         }Else{
                             [System.Drawing.SolidBrush]::new($Color)
                         }
+                    }ElseIf($Control.Text -match ','){
+                        If($Control.Text -match 'loc'){$Split = $true}
+                        $TempCoords = ($Control.Text.Split('=')[-1].Split(',')|%{[Int]$_})
+                        [System.Drawing.Point]::new($TempCoords[0],$TempCoords[1])
                     }ElseIf($Control.Text -notmatch '\+'){
                         [System.Drawing.Image]::FromFile($Control.Text)
                     }Else{
@@ -198,6 +203,18 @@ $Draw.Add_Click({
                 $PointArray[($i-1)] = $InputArgs[$i]
             }
             $InputArgs = @($InputArgs[0],$PointArray)
+        }
+
+        If($Split){
+            $TempPoint = $null
+            $InputArgsStart = ($InputArgs | %{$Found = $false}{If($_.GetType() -eq [System.Drawing.Point]){$TempPoint = $_; $Found = $true}; If(!$Found){$_}})
+            $InputArgsEnd = ($InputArgs | %{$Found = $false}{If($Found){$_}; If($_.GetType() -eq [System.Drawing.Point]){$Found = $true}})
+
+            $InputArgs = @()
+            $InputArgsStart | %{$InputArgs+=$_}
+            $InputArgs+=[Int]$TempPoint.X
+            $InputArgs+=[Int]$TempPoint.Y
+            $InputArgsEnd | %{$InputArgs+=$_}
         }
 
         $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
@@ -460,7 +477,49 @@ $PassiveList.Add_SelectedIndexChanged({
                     $String.Parent = $BigPanel
                 }
                 'Point'{
-                    $Lab = [System.Windows.Forms.Label]::new()
+                    $Point = [System.Windows.Forms.Button]::new()
+                    $Point.Text = $Label
+                    $Point.Left = $OffSetX
+                    $Point.Top+=$OffSetY
+                    $Point.Add_MouseUp({
+                        $This.Text = ($This.Text -replace "\d","" -replace ",","" -replace "=","")+"="+[System.Windows.Forms.Cursor]::Position.ToString().Trim("{}").Replace("X=","").Replace("Y=","")
+                    })
+                    $Point.Add_MouseMove({
+                        If([System.Windows.Forms.UserControl]::MouseButtons.ToString() -match 'Left'){
+                            $PH = [System.Windows.Forms.Cursor]::Position
+
+                            $XCoord.Value = $PH.X
+                            $YCoord.Value = $PH.Y
+
+                            $Bounds = [System.Drawing.Rectangle]::new($PH.X-7,$PH.Y-7,15,15)
+                            $BMP = [System.Drawing.Bitmap]::new($Bounds.Width, $Bounds.Height)
+                            ([System.Drawing.Graphics]::FromImage($BMP)).CopyFromScreen($Bounds.Location, [System.Drawing.Point]::Empty, $Bounds.Size)
+
+                            $BMPBig = [System.Drawing.Bitmap]::new(128, 128)
+                            $GraphicsBig = [System.Drawing.Graphics]::FromImage($BMPBig)
+                            $GraphicsBig.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+                            $GraphicsBig.DrawImage($BMP,1,7,128,128)
+                            $ZoomBox.BackgroundImage = $BMPBig
+
+                            $PixelColor = $BMPBig.GetPixel(64,64)
+
+                            $Lum = [Math]::Sqrt(
+                                $PixelColor.R * $PixelColor.R * 0.299 +
+                                $PixelColor.G * $PixelColor.G * 0.587 +
+                                $PixelColor.B * $PixelColor.B * 0.114
+                            )
+                            If($Lum -gt 130){
+                                $CenterDot.BackColor = [System.Drawing.Color]::Black
+                            }Else{
+                                $CenterDot.BackColor = [System.Drawing.Color]::White
+                            }
+
+                            $ControllerForm.Refresh()
+                        }
+                    })
+                    $Point.Parent = $BigPanel
+
+                    <#$Lab = [System.Windows.Forms.Label]::new()
                     $Lab.Text = $Label
                     $Lab.Width = ($Lab.Text.Length*6)+10
                     $Lab.Left = $OffSetX
@@ -485,7 +544,7 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Number2.Left = $Number1.Location.X+$Number1.Width+15
                     $Number2.Top+=$OffSetY
                     $Number2.Text='Array'
-                    $Number2.Parent = $BigPanel
+                    $Number2.Parent = $BigPanel#>
                 }
                 'Point[]'{
                     $Add = [system.Windows.Forms.Button]::new()
@@ -502,59 +561,51 @@ $PassiveList.Add_SelectedIndexChanged({
                         }
                         $TempOffsetY+=30
 
-                        $Lab = [System.Windows.Forms.Label]::new()
-                        $Lab.Text = "points"
-                        $Lab.Width = ($Lab.Text.Length*6)+10
-                        $Lab.Left = $This.Location.X
-                        $Lab.Top = $TempOffsetY
-                        $Lab.Parent = $BigPanel
+                        $Point = [System.Windows.Forms.Button]::new()
+                        $Point.Text = "pt"
+                        $Point.Left = $This.Left
+                        $Point.Top+=$TempOffsetY
+                        $Point.Add_MouseUp({
+                            $This.Text = ($This.Text -replace "\d","" -replace ",","" -replace "=","")+"="+[System.Windows.Forms.Cursor]::Position.ToString().Trim("{}").Replace("X=","").Replace("Y=","")
+                        })
+                        $Point.Add_MouseMove({
+                            If([System.Windows.Forms.UserControl]::MouseButtons.ToString() -match 'Left'){
+                                $PH = [System.Windows.Forms.Cursor]::Position
 
-                        #$OffSetX+=$Lab.Width+20
+                                $XCoord.Value = $PH.X
+                                $YCoord.Value = $PH.Y
 
-                        $Number1 = [System.Windows.Forms.NumericUpDown]::new()
-                        $Number1.Maximum = 99999
-                        $Number1.Minimum = -99999
-                        $Number1.Width = 75
-                        $Number1.Left = $Lab.Location.X+$Lab.Width+15
-                        $Number1.Top = $TempOffsetY
-                        $Number1.Parent = $BigPanel
+                                $Bounds = [System.Drawing.Rectangle]::new($PH.X-7,$PH.Y-7,15,15)
+                                $BMP = [System.Drawing.Bitmap]::new($Bounds.Width, $Bounds.Height)
+                                ([System.Drawing.Graphics]::FromImage($BMP)).CopyFromScreen($Bounds.Location, [System.Drawing.Point]::Empty, $Bounds.Size)
 
-                        $Number2 = [System.Windows.Forms.NumericUpDown]::new()
-                        $Number2.Maximum = 99999
-                        $Number2.Minimum = -99999
-                        $Number2.Width = 75
-                        $Number2.Left = $Number1.Location.X+$Number1.Width+15
-                        $Number2.Top = $TempOffsetY
-                        $Number2.Parent = $BigPanel
+                                $BMPBig = [System.Drawing.Bitmap]::new(128, 128)
+                                $GraphicsBig = [System.Drawing.Graphics]::FromImage($BMPBig)
+                                $GraphicsBig.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+                                $GraphicsBig.DrawImage($BMP,1,7,128,128)
+                                $ZoomBox.BackgroundImage = $BMPBig
+
+                                $PixelColor = $BMPBig.GetPixel(64,64)
+
+                                $Lum = [Math]::Sqrt(
+                                    $PixelColor.R * $PixelColor.R * 0.299 +
+                                    $PixelColor.G * $PixelColor.G * 0.587 +
+                                    $PixelColor.B * $PixelColor.B * 0.114
+                                )
+                                If($Lum -gt 130){
+                                    $CenterDot.BackColor = [System.Drawing.Color]::Black
+                                }Else{
+                                    $CenterDot.BackColor = [System.Drawing.Color]::White
+                                }
+
+                                $ControllerForm.Refresh()
+                            }
+                        })
+                        $Point.Parent = $BigPanel
                     })
                     $Add.Parent = $BigPanel
 
                     $OffsetY+=30
-
-                    $Lab = [System.Windows.Forms.Label]::new()
-                    $Lab.Text = $Label
-                    $Lab.Width = ($Lab.Text.Length*6)+10
-                    $Lab.Left = $OffSetX
-                    $Lab.Top = $OffSetY
-                    $Lab.Parent = $BigPanel
-
-                    #$OffSetX+=$Lab.Width+20
-
-                    $Number1 = [System.Windows.Forms.NumericUpDown]::new()
-                    $Number1.Maximum = 99999
-                    $Number1.Minimum = -99999
-                    $Number1.Width = 75
-                    $Number1.Left = $Lab.Location.X+$Lab.Width+15
-                    $Number1.Top = $OffSetY
-                    $Number1.Parent = $BigPanel
-
-                    $Number2 = [System.Windows.Forms.NumericUpDown]::new()
-                    $Number2.Maximum = 99999
-                    $Number2.Minimum = -99999
-                    $Number2.Width = 75
-                    $Number2.Left = $Number1.Location.X+$Number1.Width+15
-                    $Number2.Top = $OffSetY
-                    $Number2.Parent = $BigPanel
                 }
                 'int'{
                     $Lab = [System.Windows.Forms.Label]::new()
@@ -572,7 +623,7 @@ $PassiveList.Add_SelectedIndexChanged({
                     $Number.Width = 75
                     $Number.Left+=$OffSetX+$Lab.Width+15
                     $Number.Top+=$OffSetY
-
+                    $Number.Value = 100
                     $Number.Parent = $BigPanel
                 }
             }
@@ -592,24 +643,24 @@ $BigPanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $BigPanel.Parent = $ControllerForm
 
 $DrawlingCapes = "
-DrawLine,System.Drawing.Pen pen,int x1,int y1,int x2,int y2
-DrawEllipse,System.Drawing.Pen pen,int x,int y,int width,int height
-DrawRectangle,System.Drawing.Pen pen,int x,int y,int width,int height
-FillEllipse,System.Drawing.Brush brush,int x,int y,int width,int height
-FillRectangle,System.Drawing.Brush brush,int x,int y,int width,int height
-DrawArc,System.Drawing.Pen pen,int x,int y,int width,int height,int startAngle,int sweepAngle
-DrawPie,System.Drawing.Pen pen,int x,int y,int width,int height,int startAngle,int sweepAngle
-FillPie,System.Drawing.Brush brush,int x,int y,int width,int height,int startAngle,int sweepAngle
+DrawLine,System.Drawing.Pen pen,point pt1,point pt2
+DrawEllipse,System.Drawing.Pen pen,point loc,int width,int height
+DrawRectangle,System.Drawing.Pen pen,point loc,int width,int height
+FillEllipse,System.Drawing.Brush brush,point loc,int width,int height
+FillRectangle,System.Drawing.Brush brush,point loc,int width,int height
+DrawArc,System.Drawing.Pen pen,point loc,int width,int height,int startAngle,int sweepAngle
+DrawPie,System.Drawing.Pen pen,point loc,int width,int height,int startAngle,int sweepAngle
+FillPie,System.Drawing.Brush brush,point loc,int width,int height,int startAngle,int sweepAngle
 DrawBezier,System.Drawing.Pen pen,System.Drawing.Point pt1,System.Drawing.Point pt2,System.Drawing.Point pt3,System.Drawing.Point pt4
 DrawCurve,System.Drawing.Pen pen,System.Drawing.Point[] points
 DrawClosedCurve,System.Drawing.Pen pen,System.Drawing.Point[] points
 DrawPolygon,System.Drawing.Pen pen,System.Drawing.Point[] points
 FillClosedCurve,System.Drawing.Brush brush,System.Drawing.Point[] points
 FillPolygon,System.Drawing.Brush brush,System.Drawing.Point[] points
-DrawString,string s,System.Drawing.Font font,System.Drawing.Brush brush,float x,float y
-DrawIcon,System.Drawing.Icon icon,int x,int y
-DrawImage,System.Drawing.Image image,int x,int y,int width,int height
-DrawImageUnscaled,System.Drawing.Image image,int x,int y,int width,int height
+DrawString,string s,System.Drawing.Font font,System.Drawing.Brush brush,point loc
+DrawIcon,System.Drawing.Icon icon,point loc
+DrawImage,System.Drawing.Image image,point loc,int width,int height
+DrawImageUnscaled,System.Drawing.Image image,point loc,int width,int height
 "
 $DrawlingCapes = $DrawlingCapes.Split([System.Environment]::NewLine).Where({$_})
 $DrawlingCapes.ForEach({[Void]$PassiveList.Items.Add($_.Split(',')[0])})
