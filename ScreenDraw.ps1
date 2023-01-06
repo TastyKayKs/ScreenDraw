@@ -38,12 +38,12 @@ $Remove.Add_Click({
         $ActiveList.Items.RemoveAt($ActiveList.SelectedIndex)
 
         $ActiveList.Items | %{$DrawingForm.Refresh()}{
-            $ObjId = ([String]$_).Replace("FreeHand","DrawLines")
+            $ObjId = [String]$_
             $InputArgs = $ControllerTable.$ObjId
             $Cmd = $InputArgs | %{$Count = 0}{'$InputArgs['+$Count+'],';$Count++}
             $Cmd = $Cmd -join ''
             $Cmd = $Cmd.TrimEnd(',')+')'
-            $Cmd = '$Jraphics.'+$ObjId.Split()[-1]+'('+$Cmd
+            $Cmd = '$Jraphics.'+($ObjId.Split()[-1]).Replace("FreeHand","DrawLines")+'('+$Cmd
             [Void][ScriptBlock]::Create($Cmd).Invoke()
         }
     }Catch{}
